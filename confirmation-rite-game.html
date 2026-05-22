@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Rite of Confirmation Game</title>
+<style>
+  :root {
+    --gold: #B8860B;
+    --gold-bg: #FEF9EE;
+    --gold-border: #E8C96A;
+    --blue: #1a56a0;
+    --blue-bg: #EBF2FB;
+    --blue-border: #93C5FD;
+    --green: #166534;
+    --green-bg: #F0FDF4;
+    --green-border: #86EFAC;
+    --red: #991B1B;
+    --red-bg: #FEF2F2;
+    --red-border: #FCA5A5;
+    --gray: #374151;
+    --gray-light: #F9FAFB;
+    --gray-border: #E5E7EB;
+    --text: #111827;
+    --muted: #6B7280;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #F3F4F6;
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* ─── SCREENS ─── */
+  .screen { display: none; min-height: 100vh; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* ─── HEADER ─── */
+  .game-header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2d5a8e 100%);
+    color: white;
+    padding: 20px 20px 16px;
+    text-align: center;
+  }
+  .game-header .cross { font-size: 28px; margin-bottom: 4px; }
+  .game-header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.3px; }
+  .game-header p { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+
+  /* ─── NAME SCREEN ─── */
+  #screen-name { justify-content: center; align-items: center; padding: 24px 20px; }
+  .name-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    width: 100%; max-width: 380px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  }
+  .name-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .name-card p { font-size: 14px; color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
+  .name-card label { font-size: 13px; font-weight: 600; color: var(--gray); display: block; margin-bottom: 6px; }
+  .name-card input {
+    width: 100%; border: 1.5px solid var(--gray-border); border-radius: var(--radius-sm);
+    padding: 12px 14px; font-size: 16px; outline: none; transition: border-color 0.2s;
+    color: var(--text);
+  }
+  .name-card input:focus { border-color: var(--blue); }
+  .name-card .error { font-size: 12px; color: var(--red); margin-top: 6px; display: none; }
+
+  /* ─── BUTTONS ─── */
+  .btn {
+    display: block; width: 100%; padding: 14px;
+    border-radius: var(--radius-sm); border: none; cursor: pointer;
+    font-size: 16px; font-weight: 600; text-align: center;
+    transition: opacity 0.15s, transform 0.1s;
+    margin-top: 16px;
+  }
+  .btn:active { transform: scale(0.98); opacity: 0.85; }
+  .btn-primary { background: linear-gradient(135deg, #1a56a0, #2d5a8e); color: white; }
+  .btn-success { background: linear-gradient(135deg, #166534, #15803D); color: white; }
+  .btn-gold { background: linear-gradient(135deg, #92400E, #B45309); color: white; }
+  .btn-outline { background: white; border: 1.5px solid var(--gray-border); color: var(--gray); }
+
+  /* ─── GAME SCREEN ─── */
+  #screen-game { padding-bottom: 120px; }
+
+  .game-top-bar {
+    background: white;
+    border-bottom: 1px solid var(--gray-border);
+    padding: 10px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .player-name { font-size: 13px; font-weight: 600; color: var(--blue); }
+  .timer { font-size: 20px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+  .step-count { font-size: 13px; color: var(--muted); }
+
+  .game-instruction {
+    background: var(--blue-bg);
+    border-bottom: 1px solid var(--blue-border);
+    padding: 10px 16px;
+    font-size: 13px; color: var(--blue); line-height: 1.4;
+  }
+
+  /* ─── CARDS ─── */
+  #card-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+  .step-card {
+    background: white;
+    border: 1.5px solid var(--gray-border);
+    border-radius: var(--radius);
+    padding: 12px 10px 12px 14px;
+    display: flex; align-items: center; gap: 10px;
+    touch-action: none; user-select: none;
+    transition: box-shadow 0.15s, border-color 0.15s, opacity 0.15s;
+    position: relative;
+  }
+  .step-card.dragging { opacity: 0.3; }
+  .step-card.drag-over { border-color: var(--blue); background: var(--blue-bg); box-shadow: 0 0 0 2px var(--blue-border); }
+  .step-card.correct { border-color: var(--green-border); background: var(--green-bg); }
+  .step-card.wrong { border-color: var(--red-border); background: var(--red-bg); }
+  .step-card.locked { pointer-events: none; }
+
+  .card-pos {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    background: var(--gray-light); border: 1px solid var(--gray-border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: var(--muted);
+  }
+  .step-card.correct .card-pos { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
+  .step-card.wrong .card-pos { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
+
+  .card-info { flex: 1; min-width: 0; }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .card-hint { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+
+  .card-handle { font-size: 22px; color: #D1D5DB; cursor: grab; padding: 4px; }
+  .card-result { font-size: 20px; flex-shrink: 0; width: 24px; text-align: center; }
+
+  /* ─── STICKY FOOTER ─── */
+  .game-footer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: white; border-top: 1px solid var(--gray-border);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+  .footer-score { text-align: center; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  .footer-score span { font-weight: 700; color: var(--text); }
+
+  /* ─── RESULT SCREEN ─── */
+  #screen-result { padding: 0 0 40px; }
+  .result-hero {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2d5a8e 100%);
+    color: white; text-align: center; padding: 32px 20px;
+  }
+  .result-emoji { font-size: 52px; margin-bottom: 8px; }
+  .result-name { font-size: 15px; opacity: 0.8; margin-bottom: 4px; }
+  .result-score-big { font-size: 52px; font-weight: 800; line-height: 1; }
+  .result-score-label { font-size: 14px; opacity: 0.7; margin-top: 4px; }
+  .result-time { font-size: 13px; opacity: 0.6; margin-top: 8px; }
+
+  .result-breakdown { padding: 16px; }
+  .result-breakdown h3 { font-size: 15px; font-weight: 700; margin-bottom: 10px; color: var(--text); }
+  .rb-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: var(--radius-sm);
+    margin-bottom: 8px; border: 1px solid;
+  }
+  .rb-item.ok { background: var(--green-bg); border-color: var(--green-border); }
+  .rb-item.no { background: var(--red-bg); border-color: var(--red-border); }
+  .rb-num { font-size: 12px; font-weight: 700; width: 20px; }
+  .rb-item.ok .rb-num { color: var(--green); }
+  .rb-item.no .rb-num { color: var(--red); }
+  .rb-text { flex: 1; }
+  .rb-title { font-size: 13px; font-weight: 600; }
+  .rb-item.ok .rb-title { color: var(--green); }
+  .rb-item.no .rb-title { color: var(--red); }
+  .rb-placed { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .rb-icon { font-size: 18px; }
+
+  .submit-section { padding: 0 16px 20px; }
+  .submit-note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 10px; line-height: 1.5; }
+
+  /* ─── LEADERBOARD ─── */
+  #screen-board { padding-bottom: 40px; }
+  .board-header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2d5a8e 100%);
+    color: white; padding: 20px 20px 16px; text-align: center;
+  }
+  .board-header h2 { font-size: 20px; font-weight: 700; }
+  .board-header p { font-size: 13px; opacity: 0.7; margin-top: 4px; }
+
+  .board-table { padding: 12px 16px; }
+  .board-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    background: white; border-radius: var(--radius-sm);
+    border: 1px solid var(--gray-border);
+    margin-bottom: 8px;
+  }
+  .board-row.rank-1 { border-color: #F59E0B; background: #FFFBEB; }
+  .board-row.rank-2 { border-color: #9CA3AF; background: #F9FAFB; }
+  .board-row.rank-3 { border-color: #CD7C2F; background: #FFF7ED; }
+
+  .rank-badge {
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700;
+    background: var(--gray-light); color: var(--muted); border: 1px solid var(--gray-border);
+  }
+  .rank-1 .rank-badge { background: #F59E0B; color: white; border-color: #D97706; }
+  .rank-2 .rank-badge { background: #9CA3AF; color: white; border-color: #6B7280; }
+  .rank-3 .rank-badge { background: #CD7C2F; color: white; border-color: #92400E; }
+
+  .board-name { flex: 1; font-size: 15px; font-weight: 600; color: var(--text); }
+  .board-meta { text-align: right; }
+  .board-score { font-size: 17px; font-weight: 700; color: var(--blue); }
+  .board-time { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  .board-empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 14px; }
+
+  .board-refresh { padding: 0 16px 8px; }
+
+  /* ─── LOADING ─── */
+  #screen-loading {
+    justify-content: center; align-items: center;
+    min-height: 100vh; background: #F3F4F6;
+  }
+  .spinner {
+    width: 40px; height: 40px; border: 3px solid #E5E7EB;
+    border-top-color: var(--blue); border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #screen-loading p { font-size: 14px; color: var(--muted); text-align: center; }
+
+  /* ─── SUBMITTED SCREEN ─── */
+  #screen-done {
+    justify-content: center; align-items: center; padding: 32px 20px;
+    background: #F3F4F6;
+  }
+  .done-card {
+    background: white; border-radius: var(--radius); padding: 32px 24px;
+    text-align: center; max-width: 380px; width: 100%;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  }
+  .done-card .big-icon { font-size: 56px; margin-bottom: 12px; }
+  .done-card h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .done-card p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+  /* ─── ALREADY PLAYED ─── */
+  #screen-played {
+    justify-content: center; align-items: center; padding: 32px 20px;
+    background: #F3F4F6;
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="screen-loading" class="screen active">
+  <div>
+    <div class="spinner"></div>
+    <p>Loading the game...</p>
+  </div>
+</div>
+
+<!-- NAME ENTRY -->
+<div id="screen-name" class="screen">
+  <div class="game-header" style="width:100%">
+    <div class="cross">✝</div>
+    <h1>Rite of Confirmation</h1>
+    <p>Pentecost — Catechism Game</p>
+  </div>
+  <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:24px 20px; width:100%">
+    <div class="name-card">
+      <h2>Welcome! 👋</h2>
+      <p>Enter your name to begin. You will arrange the 9 steps of the Rite of Confirmation in the correct order. You only get <strong>one attempt</strong>.</p>
+      <label for="name-input">Your name</label>
+      <input type="text" id="name-input" placeholder="e.g. Maria Santos" autocomplete="given-name" maxlength="40" />
+      <div class="error" id="name-error">Please enter your name before starting.</div>
+      <button class="btn btn-primary" onclick="startGame()">Start Game →</button>
+    </div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="screen-game" class="screen">
+  <div class="game-top-bar">
+    <div class="player-name" id="top-player-name"></div>
+    <div class="timer" id="game-timer">00:00</div>
+    <div class="step-count">9 steps</div>
+  </div>
+  <div class="game-instruction">
+    Drag ☰ to reorder the cards. Put the 9 steps of the Rite of Confirmation in the correct order.
+  </div>
+  <div id="card-list"></div>
+  <div class="game-footer">
+    <div class="footer-score" id="footer-info">Arrange all 9 steps, then check your answer.</div>
+    <button class="btn btn-primary" onclick="checkAnswers()">Check My Answer ✓</button>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="screen-result" class="screen">
+  <div class="result-hero">
+    <div class="result-emoji" id="res-emoji"></div>
+    <div class="result-name" id="res-name"></div>
+    <div class="result-score-big" id="res-score"></div>
+    <div class="result-score-label">out of 9 correct</div>
+    <div class="result-time" id="res-time"></div>
+  </div>
+  <div class="result-breakdown">
+    <h3>Your answers</h3>
+    <div id="res-breakdown"></div>
+  </div>
+  <div class="submit-section">
+    <button class="btn btn-success" id="submit-btn" onclick="submitScore()">Submit My Score →</button>
+    <p class="submit-note">Once submitted, your score is final and will appear on the class leaderboard.</p>
+  </div>
+</div>
+
+<!-- SUBMITTED / DONE -->
+<div id="screen-done" class="screen">
+  <div class="game-header" style="width:100%">
+    <div class="cross">✝</div>
+    <h1>Rite of Confirmation</h1>
+    <p>Pentecost — Catechism Game</p>
+  </div>
+  <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:24px 20px; width:100%">
+    <div class="done-card">
+      <div class="big-icon">🎉</div>
+      <h2 id="done-name">Score submitted!</h2>
+      <p id="done-msg">Your score has been added to the class leaderboard. Well done!</p>
+      <button class="btn btn-outline" style="margin-top:20px" onclick="showScreen('screen-board'); loadLeaderboard()">View Leaderboard →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ALREADY PLAYED -->
+<div id="screen-played" class="screen">
+  <div class="game-header" style="width:100%">
+    <div class="cross">✝</div>
+    <h1>Rite of Confirmation</h1>
+    <p>Pentecost — Catechism Game</p>
+  </div>
+  <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:24px 20px; width:100%">
+    <div class="done-card">
+      <div class="big-icon">🔒</div>
+      <h2>Already submitted!</h2>
+      <p id="played-msg">You have already submitted your score. Check the leaderboard to see how you did!</p>
+      <button class="btn btn-primary" style="margin-top:20px" onclick="showScreen('screen-board'); loadLeaderboard()">View Leaderboard →</button>
+    </div>
+  </div>
+</div>
+
+<!-- LEADERBOARD -->
+<div id="screen-board" class="screen">
+  <div class="board-header">
+    <h2>🏆 Class Leaderboard</h2>
+    <p>Ranked by score · ties broken by fastest time</p>
+  </div>
+  <div class="board-refresh">
+    <button class="btn btn-outline" style="margin-top:12px" onclick="loadLeaderboard()">↻ Refresh</button>
+  </div>
+  <div class="board-table" id="board-table">
+    <div class="board-empty">Loading results...</div>
+  </div>
+</div>
+
+<script>
+const STEPS = [
+  { id:1, title:"Collect", hint:"First invocation of the Holy Spirit." },
+  { id:2, title:"Liturgy of the Word", hint:"Scripture is proclaimed; the Spirit flows through the Word." },
+  { id:3, title:"Presentation of the Candidates", hint:"The priest presents candidates to the bishop." },
+  { id:4, title:"Homily", hint:"The bishop gives a brief reflection." },
+  { id:5, title:"Renewal of Baptismal Promises", hint:"Candidates publicly renew the faith — 'I do.'" },
+  { id:6, title:"Laying on of Hands", hint:"The bishop extends hands, invoking the Holy Spirit." },
+  { id:7, title:"Anointing with Chrism", hint:"Sacred oil is traced on the forehead: 'Be sealed with the Holy Spirit.'" },
+  { id:8, title:"Prayers of the Faithful", hint:"The newly confirmed intercede for the Church and the world." },
+  { id:9, title:"Prayer over the People", hint:"The bishop blesses all. 'Go and announce the Gospel of the Lord.'" }
+];
+
+const STORAGE_KEY = 'confirmation_leaderboard_v2';
+const PLAYED_KEY = 'confirmation_played_v2';
+
+let playerName = '';
+let currentOrder = [];
+let timerInterval = null;
+let seconds = 0;
+let dragSrcIdx = null;
+let gameResult = null;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function formatTime(s) {
+  return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+}
+
+// ─── STORAGE HELPERS ───
+async function loadScores() {
+  try {
+    const res = await window.storage.get(STORAGE_KEY, true);
+    return res ? JSON.parse(res.value) : [];
+  } catch(e) { return []; }
+}
+
+async function saveScores(scores) {
+  try {
+    await window.storage.set(STORAGE_KEY, JSON.stringify(scores), true);
+  } catch(e) {}
+}
+
+function hasPlayed() {
+  return !!localStorage.getItem(PLAYED_KEY);
+}
+
+function markPlayed(name, score, time) {
+  localStorage.setItem(PLAYED_KEY, JSON.stringify({ name, score, time }));
+}
+
+// ─── INIT ───
+async function init() {
+  if (hasPlayed()) {
+    const prev = JSON.parse(localStorage.getItem(PLAYED_KEY));
+    document.getElementById('played-msg').textContent =
+      `You already submitted your score as "${prev.name}" — ${prev.score}/9 in ${formatTime(prev.time)}. Check the leaderboard!`;
+    showScreen('screen-played');
+  } else {
+    showScreen('screen-name');
+    setTimeout(() => document.getElementById('name-input').focus(), 400);
+  }
+}
+
+// ─── NAME ───
+function startGame() {
+  const inp = document.getElementById('name-input');
+  const err = document.getElementById('name-error');
+  playerName = inp.value.trim();
+  if (!playerName) { err.style.display = 'block'; inp.focus(); return; }
+  err.style.display = 'none';
+  document.getElementById('top-player-name').textContent = playerName;
+  currentOrder = [...STEPS].sort(() => Math.random() - 0.5);
+  renderCards();
+  showScreen('screen-game');
+  startTimer();
+}
+
+document.getElementById('name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startGame();
+});
+
+// ─── TIMER ───
+function startTimer() {
+  seconds = 0;
+  clearInterval(timerInterval);
+  updateTimer();
+  timerInterval = setInterval(() => { seconds++; updateTimer(); }, 1000);
+}
+
+function stopTimer() { clearInterval(timerInterval); }
+
+function updateTimer() {
+  document.getElementById('game-timer').textContent = formatTime(seconds);
+}
+
+// ─── RENDER CARDS ───
+function renderCards(statuses) {
+  const list = document.getElementById('card-list');
+  list.innerHTML = '';
+  currentOrder.forEach((step, idx) => {
+    const card = document.createElement('div');
+    card.className = 'step-card' + (statuses ? ' locked' : '');
+    card.dataset.idx = idx;
+
+    if (statuses) {
+      card.classList.add(statuses[idx] ? 'correct' : 'wrong');
+    }
+
+    const resultIcon = statuses ? (statuses[idx] ? '✅' : '❌') : '';
+
+    card.innerHTML = `
+      <div class="card-pos">${idx+1}</div>
+      <div class="card-info">
+        <div class="card-title">${step.title}</div>
+        <div class="card-hint">${step.hint}</div>
+      </div>
+      ${statuses ? `<div class="card-result">${resultIcon}</div>` : `<div class="card-handle">☰</div>`}
+    `;
+
+    if (!statuses) {
+      card.draggable = true;
+      card.addEventListener('dragstart', onDragStart);
+      card.addEventListener('dragover', onDragOver);
+      card.addEventListener('drop', onDrop);
+      card.addEventListener('dragend', onDragEnd);
+      addTouchDrag(card, idx);
+    }
+
+    list.appendChild(card);
+  });
+}
+
+// ─── DRAG (MOUSE) ───
+function onDragStart(e) {
+  dragSrcIdx = +e.currentTarget.dataset.idx;
+  setTimeout(() => e.currentTarget.classList.add('dragging'), 0);
+}
+function onDragOver(e) {
+  e.preventDefault();
+  document.querySelectorAll('.step-card').forEach(c => c.classList.remove('drag-over'));
+  e.currentTarget.classList.add('drag-over');
+}
+function onDrop(e) {
+  e.preventDefault();
+  const tgt = +e.currentTarget.dataset.idx;
+  if (dragSrcIdx !== null && dragSrcIdx !== tgt) swap(dragSrcIdx, tgt);
+}
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.step-card').forEach(c => c.classList.remove('drag-over'));
+  dragSrcIdx = null;
+}
+
+// ─── TOUCH DRAG ───
+function addTouchDrag(card, idx) {
+  let startY = 0;
+  let clone = null;
+  let srcIdx = idx;
+
+  card.addEventListener('touchstart', e => {
+    startY = e.touches[0].clientY;
+    card.style.opacity = '0.5';
+  }, { passive: true });
+
+  card.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    document.querySelectorAll('.step-card').forEach(c => c.classList.remove('drag-over'));
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const target = el?.closest('.step-card');
+    if (target && target !== card) target.classList.add('drag-over');
+  }, { passive: false });
+
+  card.addEventListener('touchend', e => {
+    card.style.opacity = '1';
+    const touch = e.changedTouches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const target = el?.closest('.step-card');
+    if (target && target !== card) {
+      const tgtIdx = +target.dataset.idx;
+      swap(srcIdx, tgtIdx);
+    }
+    document.querySelectorAll('.step-card').forEach(c => c.classList.remove('drag-over'));
+  });
+}
+
+function swap(a, b) {
+  [currentOrder[a], currentOrder[b]] = [currentOrder[b], currentOrder[a]];
+  renderCards();
+}
+
+// ─── CHECK ───
+function checkAnswers() {
+  stopTimer();
+  const statuses = currentOrder.map((step, i) => step.id === STEPS[i].id);
+  const correct = statuses.filter(Boolean).length;
+  renderCards(statuses);
+
+  const pct = Math.round((correct / 9) * 100);
+  const emoji = correct === 9 ? '🏆' : correct >= 7 ? '🌟' : correct >= 5 ? '😊' : correct >= 3 ? '🤔' : '💪';
+
+  gameResult = { name: playerName, correct, seconds, statuses };
+
+  document.getElementById('res-emoji').textContent = emoji;
+  document.getElementById('res-name').textContent = playerName;
+  document.getElementById('res-score').textContent = correct;
+  document.getElementById('res-time').textContent = 'Completed in ' + formatTime(seconds);
+
+  // breakdown
+  const bd = document.getElementById('res-breakdown');
+  bd.innerHTML = '';
+  currentOrder.forEach((step, i) => {
+    const ok = statuses[i];
+    const div = document.createElement('div');
+    div.className = 'rb-item ' + (ok ? 'ok' : 'no');
+    div.innerHTML = `
+      <div class="rb-num">${i+1}</div>
+      <div class="rb-text">
+        <div class="rb-title">${step.title}</div>
+        ${!ok ? `<div class="rb-placed">Correct position: ${STEPS.findIndex(s=>s.id===step.id)+1}</div>` : ''}
+      </div>
+      <div class="rb-icon">${ok ? '✅' : '❌'}</div>
+    `;
+    bd.appendChild(div);
+  });
+
+  showScreen('screen-result');
+}
+
+// ─── SUBMIT ───
+async function submitScore() {
+  const btn = document.getElementById('submit-btn');
+  btn.textContent = 'Submitting...';
+  btn.disabled = true;
+
+  try {
+    const scores = await loadScores();
+    scores.push({
+      name: gameResult.name,
+      correct: gameResult.correct,
+      seconds: gameResult.seconds,
+      ts: Date.now()
+    });
+    await saveScores(scores);
+    markPlayed(gameResult.name, gameResult.correct, gameResult.seconds);
+
+    document.getElementById('done-name').textContent = 'Submitted, ' + gameResult.name + '!';
+    document.getElementById('done-msg').textContent =
+      `Your score: ${gameResult.correct}/9 in ${formatTime(gameResult.seconds)}. Great effort! Check the leaderboard to see your rank.`;
+    showScreen('screen-done');
+  } catch(e) {
+    btn.textContent = 'Submit My Score →';
+    btn.disabled = false;
+    alert('Could not save your score. Please try again.');
+  }
+}
+
+// ─── LEADERBOARD ───
+async function loadLeaderboard() {
+  document.getElementById('board-table').innerHTML = '<div class="board-empty">Loading...</div>';
+  try {
+    const scores = await loadScores();
+    renderLeaderboard(scores);
+  } catch(e) {
+    document.getElementById('board-table').innerHTML = '<div class="board-empty">Could not load scores.</div>';
+  }
+}
+
+function renderLeaderboard(scores) {
+  const table = document.getElementById('board-table');
+  if (!scores.length) {
+    table.innerHTML = '<div class="board-empty">No scores yet. Be the first to submit!</div>';
+    return;
+  }
+
+  // Sort: higher correct first; tie → shorter time
+  const sorted = [...scores].sort((a,b) => {
+    if (b.correct !== a.correct) return b.correct - a.correct;
+    return a.seconds - b.seconds;
+  });
+
+  table.innerHTML = '';
+  const medals = ['🥇','🥈','🥉'];
+
+  sorted.forEach((entry, i) => {
+    const rank = i + 1;
+    const rankClass = rank <= 3 ? ' rank-'+rank : '';
+    const badge = rank <= 3 ? medals[i] : rank;
+
+    const row = document.createElement('div');
+    row.className = 'board-row' + rankClass;
+    row.innerHTML = `
+      <div class="rank-badge">${badge}</div>
+      <div class="board-name">${escHtml(entry.name)}</div>
+      <div class="board-meta">
+        <div class="board-score">${entry.correct}/9</div>
+        <div class="board-time">${formatTime(entry.seconds)}</div>
+      </div>
+    `;
+    table.appendChild(row);
+  });
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+</body>
+</html>
